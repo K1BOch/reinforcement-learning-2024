@@ -17,7 +17,7 @@ def sample_trajectory(env, policy, max_path_length, render=False):
     """Sample a rollout in the environment from a policy."""
     
     # initialize env for the beginning of a new rollout
-    ob =  env.reset() # TODO: initial observation after resetting the env
+    ob =  env.reset()
 
     # init vars
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
@@ -32,9 +32,10 @@ def sample_trajectory(env, policy, max_path_length, render=False):
                 img = env.render(mode='single_rgb_array')
             image_obs.append(cv2.resize(img, dsize=(250, 250), interpolation=cv2.INTER_CUBIC))
     
-        # TODO use the most recent ob to decide what to do
-        ac = TODO # HINT: this is a numpy array
-        ac = ac[0]
+        ac = policy.get_action(ob)
+        # ac = ac[0]
+        acs.append(ac)
+        obs.append(ob)
 
         # TODO: take that action and get reward and next ob
         next_ob, rew, done, _ = TODO

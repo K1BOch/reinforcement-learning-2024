@@ -23,7 +23,7 @@ from csci3241.policies.loaded_gaussian_policy import LoadedGaussianPolicy
 
 # how many rollouts to save as videos to tensorboard
 MAX_NVIDEO = 2
-MAX_VIDEO_LEN = 40  # we overwrite this in the code below
+MAX_VIDEO_LEN = 40  # Length of video in frames (overwritten later based on episode length)
 
 MJ_ENV_NAMES = ["Ant-v4", "Walker2d-v4", "HalfCheetah-v4", "Hopper-v4"]
 
@@ -31,7 +31,7 @@ MJ_ENV_NAMES = ["Ant-v4", "Walker2d-v4", "HalfCheetah-v4", "Hopper-v4"]
 def run_training_loop(params):
     """
     Runs training with the specified parameters
-    (behavior cloning or dagger)
+    (behavior cloning or Dataset Aggregation, aka DAgger)
 
     Args:
         params: experiment parameters
@@ -41,21 +41,23 @@ def run_training_loop(params):
     ## INIT
     #############
 
-    # Get params, create logger, create TF session
+    # Initialize logger for recording training details
     logger = Logger(params['logdir'])
 
-    # Set random seeds
+    # Set random seed for reproducibility
     seed = params['seed']
     np.random.seed(seed)
     torch.manual_seed(seed)
+    # Initialize GPU settings
     ptu.init_gpu(
         use_gpu=not params['no_gpu'],
         gpu_id=params['which_gpu']
     )
 
-    # Set logger attributes
+    # Set logging options for video and metrics
     log_video = True
     log_metrics = True
+
 
     #############
     ## ENV
@@ -85,6 +87,7 @@ def run_training_loop(params):
     #############
 
     # TODO: Implement missing functions in this class.
+    # Create the policy (neural network) that the agent will use to learn
     actor = MLPPolicySL(
         ac_dim,
         ob_dim,
@@ -132,6 +135,7 @@ def run_training_loop(params):
             # TODO: collect `params['batch_size']` transitions
             # HINT: use utils.sample_trajectories
             # TODO: implement missing parts of utils.sample_trajectory
+            # Basically you should call utils.sample_trajectories with required env, actor, params for batch_size and params for ep_len
             paths, envsteps_this_batch = TODO
 
             # relabel the collected obs with actions from a provided expert policy
@@ -141,6 +145,9 @@ def run_training_loop(params):
                 # TODO: relabel collected obsevations (from our policy) with labels from expert policy
                 # HINT: query the policy (using the get_action function) with paths[i]["observation"]
                 # and replace paths[i]["action"] with these expert labels
+                # 1. Loop Through Each Path
+                # 2. Extract the Observations
+                # 3. Query the Expert Policy for Actions and store in paths[i]["action"]
                 paths = TODO
 
         total_envsteps += envsteps_this_batch
@@ -151,17 +158,15 @@ def run_training_loop(params):
         print('\nTraining agent using sampled data from replay buffer...')
         training_logs = []
         for _ in range(params['num_agent_train_steps_per_iter']):
-
-          # TODO: sample some data from replay_buffer
-          # HINT1: how much data = params['train_batch_size']
-          # HINT2: use np.random.permutation to sample random indices
-          # HINT3: return corresponding data points from each array (i.e., not different indices from each array)
-          # for imitation learning, we only need observations and actions.  
-          ob_batch, ac_batch = TODO
-
-          # use the sampled data to train an agent
-          train_log = actor.update(ob_batch, ac_batch)
-          training_logs.append(train_log)
+            indices = np.random.permutation(len(replay_buffer))[
+                :params['train_batch_size']]
+            ob_batch = torch.from_numpy(
+                replay_buffer.obs[indices]).to(ptu.device)
+            ac_batch = torch.from_numpy(
+                replay_buffer.acs[indices]).to(ptu.device)
+            # use the sampled data to train an agent
+            train_log = actor.update(ob_batch, ac_batch)
+            training_logs.append(train_log)
 
         # log/save
         print('\nBeginning logging procedure...')
