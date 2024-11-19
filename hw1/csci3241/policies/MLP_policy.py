@@ -149,7 +149,11 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         5. Update model parameters for self.optimizer using step
         6. return the training loss
         '''
-        loss = TODO
+        predicted_actions = self.forward(observations)
+        loss = F.mse_loss(predicted_actions, actions)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
         return {
             # You can add extra logging information here, but keep this line
             'Training Loss': ptu.to_numpy(loss),

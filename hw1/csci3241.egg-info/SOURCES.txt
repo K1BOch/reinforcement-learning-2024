@@ -1,0 +1,6 @@
+README.md
+setup.py
+csci3241.egg-info/PKG-INFO
+csci3241.egg-info/SOURCES.txt
+csci3241.egg-info/dependency_links.txt
+csci3241.egg-info/top_level.txt

@@ -4,9 +4,10 @@ Runs behavior cloning and DAgger for homework 1
 Functions to edit:
     1. run_training_loop
 """
-
-import pickle
 import os
+import sys 
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+import pickle
 import time
 import gym
 
@@ -19,8 +20,6 @@ from csci3241.infrastructure.logger import Logger
 from csci3241.infrastructure.replay_buffer import ReplayBuffer
 from csci3241.policies.MLP_policy import MLPPolicySL
 from csci3241.policies.loaded_gaussian_policy import LoadedGaussianPolicy
-
-
 # how many rollouts to save as videos to tensorboard
 MAX_NVIDEO = 2
 MAX_VIDEO_LEN = 40  # Length of video in frames (overwritten later based on episode length)
@@ -48,6 +47,9 @@ def run_training_loop(params):
     seed = params['seed']
     np.random.seed(seed)
     torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
     # Initialize GPU settings
     ptu.init_gpu(
         use_gpu=not params['no_gpu'],
@@ -136,7 +138,9 @@ def run_training_loop(params):
             # HINT: use utils.sample_trajectories
             # TODO: implement missing parts of utils.sample_trajectory
             # Basically you should call utils.sample_trajectories with required env, actor, params for batch_size and params for ep_len
-            paths, envsteps_this_batch = TODO
+            paths, envsteps_this_batch = utils.sample_trajectories(
+                env, actor, params['batch_size'], params['ep_len']
+            )
 
             # relabel the collected obs with actions from a provided expert policy
             if params['do_dagger']:
@@ -148,7 +152,9 @@ def run_training_loop(params):
                 # 1. Loop Through Each Path
                 # 2. Extract the Observations
                 # 3. Query the Expert Policy for Actions and store in paths[i]["action"]
-                paths = TODO
+                for path in paths:
+                    expert_actions = expert_policy.get_action(path["observation"])
+                    path["action"] = expert_actions
 
         total_envsteps += envsteps_this_batch
         # add collected data to replay buffer
